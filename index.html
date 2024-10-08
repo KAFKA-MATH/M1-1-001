@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiple Choice Quiz</title>
+    <style>
+        .question-container {
+            margin: 20px;
+        }
+        .question-image, .extra-image {
+            display: block;
+            margin: 10px 0;
+            max-width: 400px; /* Adjust image size */
+        }
+        .choices {
+            margin: 10px 0;
+        }
+        .choice-btn {
+            display: none; /* Hide the radio buttons */
+        }
+        .choice-label {
+            display: inline-block;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .circle-number {
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 5px;
+            color: black;
+        }
+        .selected {
+            color: red; /* Change selected color to red */
+        }
+        .correct {
+            color: green; /* Change correct answer to green when submitted */
+        }
+        .wrong {
+            color: black; /* Reset wrong answers to black after submission */
+        }
+        .total-score {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .result-mark {
+            font-size: 18px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .correct-mark {
+            font-size: 17px;
+            color: rgb(90, 11, 239);
+        }
+        .wrong-mark {
+            font-size: 17px;
+            color: red;
+        }
+        .link-button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            background-color: #b02a0c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 13px;
+            
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="quiz-container">
+    <!-- Questions will be dynamically added here -->
+</div>
+
+<button onclick="submitQuiz()">Submit Quiz</button>
+<p id="total-score" class="total-score"></p>
+
+<script>
+    let questions = [];
+    let selectedChoices = [];
+    let correctAnswers = [];
+    const totalQuestions = 2; // Adjust this based on your number of questions
+    let score = 0;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Load questions and choices from the text file
+        fetch('problems.txt')
+            .then(response => response.text())
+            .then(text => {
+                const problems = text.split('\n');  // Each line is a new problem
+                const quizContainer = document.getElementById('quiz-container');
+                
+                // Create a question block for each problem
+                problems.forEach((problem, index) => {
+                    const problemData = problem.split(' | ');
+                    const questionText = problemData[0];
+                    const imagePath = problemData[1]; // The image path is the second item
+                    const choices = problemData.slice(2, 7);  // Next 5 are choices
+                    const correctAnswer = parseInt(problemData[7].trim());  // Last one is the correct answer
+                    const linkUrl = problemData[8].trim();  // Extract link (either URL or image)
+
+                    correctAnswers.push(correctAnswer);
+
+                    // Add the question to the quiz container
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = "question-container";
+                    questionDiv.innerHTML = `<button class="link-button" onclick="handleLinkClick('${linkUrl}', ${index})">KAFKA</button>
+                                             <p>${questionText}</p>
+                                             <img src="${imagePath}" alt="Question Image" class="question-image">
+                                             
+                                             <img src="${linkUrl}" id="extra-image-${index}" class="extra-image hidden" alt="Additional Image">`;
+
+                    // Create the choice buttons for this question
+                    const choicesDiv = document.createElement('div');
+                    choicesDiv.className = "choices";
+
+                    choices.forEach((choice, choiceIndex) => {
+                        const choiceNumber = choiceIndex + 1;
+                        const circleNumber = getCircleNumber(choiceNumber); // Get the circled number (➀, ➁, etc.)
+                        choicesDiv.innerHTML += `
+                            <label class="choice-label" onclick="selectChoice(${index}, ${choiceNumber})">
+                                <span id="circle${index}-${choiceNumber}" class="circle-number">${circleNumber}</span><span>${choice}</span>
+                                <span id="result${index}-${choiceNumber}" class="result-mark"></span>
+                            </label><br>
+                        `;
+                    });
+
+                    questionDiv.appendChild(choicesDiv);
+                    quizContainer.appendChild(questionDiv);
+
+                    // Initialize selected choices to null for each question
+                    selectedChoices.push(null);
+                });
+            });
+    });
+
+    // Helper function to return the circled number
+    function getCircleNumber(number) {
+        const circleNumbers = ['➀', '➁', '➂', '➃', '➄'];
+        return circleNumbers[number - 1];
+    }
+
+    function selectChoice(questionIndex, choiceNumber) {
+        // Reset all circles for the current question
+        for (let i = 1; i <= 5; i++) {
+            document.getElementById(`circle${questionIndex}-${i}`).classList.remove('selected');
+        }
+
+        // Mark the selected circle for the current question
+        document.getElementById(`circle${questionIndex}-${choiceNumber}`).classList.add('selected');
+        selectedChoices[questionIndex] = choiceNumber;
+    }
+
+    function handleLinkClick(link, index) {
+        const extraImage = document.getElementById(`extra-image-${index}`);
+        if (link.startsWith('http')) {
+            window.open(link, '_blank');  // Open the link in a new tab
+        } else {
+            // Toggle image visibility
+            extraImage.classList.toggle('hidden');
+        }
+    }
+
+    function submitQuiz() {
+        score = 0;
+
+        // Loop through all selected answers and check them
+        selectedChoices.forEach((choice, index) => {
+            if (choice === correctAnswers[index]) {
+                score += 1 ; // Calculate score based on correct answers
+                // Mark correct answer with "O"
+                document.getElementById(`result${index}-${choice}`).innerText = "O";
+                document.getElementById(`result${index}-${choice}`).classList.add('correct-mark');
+            } else {
+                // Mark incorrect answer with "X" and display correct answer
+                document.getElementById(`result${index}-${choice}`).innerText = "X";
+                document.getElementById(`result${index}-${choice}`).classList.add('wrong-mark');
+
+                // Mark the correct choice with "O"
+                const correctChoice = correctAnswers[index];
+                document.getElementById(`result${index}-${correctChoice}`).innerText = "O";
+                document.getElementById(`result${index}-${correctChoice}`).classList.add('correct-mark');
+            }
+        });
+
+        // Display total score
+        document.getElementById('total-score').innerText = `Your Correct Answer is ${score} problems. `;
+    }
+</script>
+
+</body>
+</html>
